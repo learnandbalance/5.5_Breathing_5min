@@ -9,7 +9,7 @@
 
   --text: #eaf6ff;
 
-  --uiInsetX: 72px; /* ✅ 36px -> 72px (2 kat) */
+  --uiInsetX: 72px; /* ✅ soldan boşluk: öncekinin 2 katı */
 }
 
 *{ box-sizing:border-box; }
@@ -26,6 +26,7 @@ body{
   overflow:hidden;
 }
 
+/* Sol üst etiket */
 .cornerLabel{
   position: fixed;
   top: 14px;
@@ -43,6 +44,7 @@ body{
   pointer-events:none;
 }
 
+/* Sol alt geri sayım */
 .countdown{
   position: fixed;
   left: var(--uiInsetX);
@@ -60,6 +62,7 @@ body{
   pointer-events:none;
 }
 
+/* Ana sahne */
 .stage{
   position: relative;
   width: 100vw;
@@ -135,6 +138,7 @@ body{
   50%{ transform: translate(1.2%, 1%) rotate(6deg) scale(1.04); }
 }
 
+/* Topun alt yazısı */
 .readout{
   width:100%;
   display:flex;
@@ -153,6 +157,7 @@ body{
   font-size: clamp(28px, 4.6vw, 64px);
 }
 
+/* Sağ alt HUD */
 .hud{
   position: fixed;
   right: 12px;
