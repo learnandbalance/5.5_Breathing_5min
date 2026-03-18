@@ -3,69 +3,62 @@ const CYCLE_LEN = PHASE_LEN * 2;
 
 const phaseLabel = document.getElementById("phaseLabel");
 const cornerLabel = document.getElementById("cornerLabel");
-const soundToggle = document.getElementById("soundToggle");
 
-let audioCtx = null;
-let audioReady = false;
+const startBtn = document.getElementById("startBtn");
+const pauseBtn = document.getElementById("pauseBtn");
+const resetBtn = document.getElementById("resetBtn");
+const soundBtn = document.getElementById("soundBtn");
 
-let master = null;
-let inhaleBus = null;
-let exhaleBus = null;
+const PRE_ROLL = 3.0;     // breathing starts after 3 seconds
+const MIN_SCALE = 0.78;
+const MAX_SCALE = 1.08;
 
-let modeVideo = false;
 let durationMin = 5;
 let durationSec = 5 * 60;
 
 let running = false;
 let rafId = null;
-let t0 = 0;
 
-let PRE_ROLL = 3.0;   // breathing starts at 3s
-let POST_ROLL = 5.0;  // 5 seconds silent after end
-let ended = false;
-let endTimePerf = 0;
+let audioCtx = null;
+let audioReady = false;
+let soundOn = true;
+
+let master = null;
+let inhaleBus = null;
+let exhaleBus = null;
+
+let t0 = 0;
+let pausedElapsed = 0;
 let lastPhase = "idle";
+let ended = false;
 
 function clamp(v, a, b){ return Math.max(a, Math.min(b, v)); }
 function easeInOut(t){ return t * t * (3 - 2 * t); }
 
-function getParams(){
+function getMinFromURL(){
   const p = new URLSearchParams(location.search);
-  const mode = (p.get("mode") || "").toLowerCase();
   const min = Number(p.get("min") || "5");
-  return { mode, min };
-}
-
-function applyModeFromURL(){
-  const { mode, min } = getParams();
-  modeVideo = (mode === "video");
-
-  if (Number.isFinite(min) && min > 0) durationMin = Math.round(min);
-  durationSec = durationMin * 60;
-
-  cornerLabel.textContent = `${durationMin} MIN • 5.5 Breathing`;
-
-  // default: if video mode, auto-run (OBS)
-  if (modeVideo){
-    startVideoAuto();
-  }
-}
-
-function setPhaseVisual(phase){
-  if (phase === "inhale"){
-    document.documentElement.style.setProperty("--blueOpacity", "1");
-    document.documentElement.style.setProperty("--greenOpacity", "0");
-  } else {
-    document.documentElement.style.setProperty("--blueOpacity", "0");
-    document.documentElement.style.setProperty("--greenOpacity", "1");
-  }
+  if (Number.isFinite(min) && min > 0) return Math.round(min);
+  return 5;
 }
 
 function setOrbScale(scale){
   document.documentElement.style.setProperty("--scale", scale.toFixed(4));
 }
 
-// ---------------- AUDIO ----------------
+function setHueForPhase(phase){
+  // inhale blue = 0deg
+  // exhale green = about -60deg (blue -> green shift)
+  const hue = (phase === "inhale") ? "0deg" : "-60deg";
+  document.documentElement.style.setProperty("--hue", hue);
+}
+
+function setPhaseLabel(text, visible=true){
+  phaseLabel.textContent = text;
+  phaseLabel.style.opacity = visible ? "1" : "0";
+}
+
+/* ---------------- AUDIO (pad) ---------------- */
 function ensureAudio(){
   if (!audioCtx){
     audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -137,8 +130,8 @@ function createChordBus({ freqs, warmth }){
   lfoGain.gain.value = 3.0;
   lfo.connect(lfoGain);
 
-  const noteMix = audioCtx.createGain();
-  noteMix.gain.value = 1.0;
+  const mix = audioCtx.createGain();
+  mix.gain.value = 1.0;
 
   const oscs = [];
 
@@ -162,19 +155,19 @@ function createChordBus({ freqs, warmth }){
 
     s.connect(gS);
     w.connect(gW);
-    gS.connect(noteMix);
-    gW.connect(noteMix);
+    gS.connect(mix);
+    gW.connect(mix);
 
     oscs.push(s, w);
   });
 
-  noteMix.connect(lp);
+  mix.connect(lp);
   lp.connect(gain);
 
   oscs.forEach(o => o.start(now));
   lfo.start(now);
 
-  return { oscs, gain, out: gain };
+  return { out: gain, gain };
 }
 
 function setPhaseAudio(phase){
@@ -182,7 +175,7 @@ function setPhaseAudio(phase){
   const now = audioCtx.currentTime;
   const FADE = 0.22;
 
-  if (soundToggle && !soundToggle.checked){
+  if (!soundOn){
     inhaleBus.gain.gain.setTargetAtTime(0.0001, now, 0.06);
     exhaleBus.gain.gain.setTargetAtTime(0.0001, now, 0.06);
     master.gain.setTargetAtTime(0.0001, now, 0.06);
@@ -196,141 +189,3 @@ function setPhaseAudio(phase){
     exhaleBus.gain.gain.setTargetAtTime(0.0001, now, FADE);
   } else {
     inhaleBus.gain.gain.setTargetAtTime(0.0001, now, FADE);
-    exhaleBus.gain.gain.setTargetAtTime(0.22, now, FADE);
-  }
-}
-
-function stopAudioSoft(){
-  if (!audioReady) return;
-  const now = audioCtx.currentTime;
-  inhaleBus.gain.gain.setTargetAtTime(0.0001, now, 0.07);
-  exhaleBus.gain.gain.setTargetAtTime(0.0001, now, 0.07);
-  master.gain.setTargetAtTime(0.0001, now, 0.09);
-}
-
-/* ✅ Chime: sadece session sonunda (başta yok) */
-function playEndChime(){
-  if (soundToggle && !soundToggle.checked) return;
-  ensureAudio();
-  const now = audioCtx.currentTime;
-
-  const out = audioCtx.createGain();
-  out.gain.setValueAtTime(0.0001, now);
-  out.gain.exponentialRampToValueAtTime(0.30, now + 0.01);
-  out.gain.exponentialRampToValueAtTime(0.0001, now + 1.4);
-  out.connect(audioCtx.destination);
-
-  const freqs = [784, 1176, 1568]; // slightly softer
-  freqs.forEach((f, idx) => {
-    const o = audioCtx.createOscillator();
-    const g = audioCtx.createGain();
-    o.type = "sine";
-    o.frequency.setValueAtTime(f, now);
-    const level = idx === 0 ? 0.22 : 0.10 / (idx + 0.2);
-    g.gain.setValueAtTime(level, now);
-    g.gain.exponentialRampToValueAtTime(0.0001, now + 1.3);
-    o.connect(g);
-    g.connect(out);
-    o.start(now);
-    o.stop(now + 1.5);
-  });
-}
-
-// ---------------- BREATH ----------------
-function computeBreath(elapsed){
-  const inCycle = elapsed % CYCLE_LEN;
-  let phase, phaseProgress;
-
-  if (inCycle < PHASE_LEN){
-    phase = "inhale";
-    phaseProgress = inCycle / PHASE_LEN;
-  } else {
-    phase = "exhale";
-    phaseProgress = (inCycle - PHASE_LEN) / PHASE_LEN;
-  }
-  return { phase, phaseProgress };
-}
-
-function startVideoAuto(){
-  running = true;
-  ended = false;
-  lastPhase = "idle";
-  t0 = performance.now();
-  rafId = requestAnimationFrame(loopVideo);
-}
-
-function loopVideo(){
-  if (!running) return;
-
-  const now = performance.now();
-  const elapsedTotal = (now - t0) / 1000;
-
-  if (ended){
-    const post = (now - endTimePerf) / 1000;
-    if (post >= POST_ROLL){
-      running = false;
-      cancelAnimationFrame(rafId);
-      return;
-    }
-    setOrbScale(0.84);
-    return (rafId = requestAnimationFrame(loopVideo));
-  }
-
-  if (elapsedTotal < PRE_ROLL){
-    setOrbScale(0.84);
-    setPhaseVisual("inhale");
-    phaseLabel.style.opacity = "0"; // pre-roll'da yazı yok istersen
-    return (rafId = requestAnimationFrame(loopVideo));
-  }
-
-  // breathing starts
-  phaseLabel.style.opacity = "1";
-
-  const breathElapsed = elapsedTotal - PRE_ROLL;
-
-  if (breathElapsed >= durationSec){
-    onSessionEnd();
-    return;
-  }
-
-  const { phase, phaseProgress } = computeBreath(breathElapsed);
-
-  if (phase !== lastPhase){
-    setPhaseVisual(phase);
-    phaseLabel.textContent = (phase === "inhale") ? "Inhale" : "Exhale";
-    try{
-      ensureAudio();
-      setPhaseAudio(phase);
-    } catch(e){}
-    lastPhase = phase;
-  }
-
-  const t = easeInOut(clamp(phaseProgress, 0, 1));
-  const minS = 0.78;
-  const maxS = 1.08;
-
-  const s = (phase === "inhale")
-    ? (minS + (maxS - minS) * t)
-    : (maxS - (maxS - minS) * t);
-
-  setOrbScale(s);
-
-  rafId = requestAnimationFrame(loopVideo);
-}
-
-function onSessionEnd(){
-  ended = true;
-  endTimePerf = performance.now();
-
-  // session bitince inhale/exhale yazısı kalksın
-  phaseLabel.style.opacity = "0";
-
-  try { stopAudioSoft(); } catch(e){}
-  try { playEndChime(); } catch(e){}
-
-  setPhaseVisual("inhale");
-  setOrbScale(0.84);
-}
-
-// init
-applyModeFromURL();
