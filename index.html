@@ -5,8 +5,10 @@
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
   <title>5.5 Breathing</title>
 
-  <link rel="stylesheet" href="styles.css?v=12" />
-  <script defer src="app.js?v=12"></script>
+  <!-- ✅ CSS doğru bağlantı -->
+  <link rel="stylesheet" href="styles.css?v=13">
+  <!-- ✅ JS doğru bağlantı (defer: DOM hazır olunca çalıştırır) -->
+  <script src="app.js?v=13" defer></script>
 </head>
 
 <body>
@@ -21,7 +23,6 @@
       <div id="orb" class="orb" aria-label="breathing orb"></div>
     </div>
 
-    <!-- Topun altında (topa daha yakın) büyük yazı -->
     <div class="readout" aria-live="polite">
       <div id="phaseLabel" class="phaseLabel">Ready</div>
     </div>
