@@ -9,7 +9,7 @@
 
   --text: #eaf6ff;
 
-  --uiInsetX: 72px; /* ✅ soldan boşluk: öncekinin 2 katı */
+  --uiInsetX: 72px; /* sol üst/alt hizası (crop için) */
 }
 
 *{ box-sizing:border-box; }
@@ -98,7 +98,10 @@ body{
     inset 0 10px 40px rgba(255,255,255,.20),
     inset 0 -18px 44px rgba(0,30,70,.35);
 
+  /* koyulaşma yok: hue-rotate */
   filter: hue-rotate(var(--hue)) saturate(var(--sat)) contrast(var(--con));
+
+  /* yumuşak ve uzun renk geçişi */
   transition:
     filter 2400ms ease,
     transform 50ms linear;
@@ -138,7 +141,7 @@ body{
   50%{ transform: translate(1.2%, 1%) rotate(6deg) scale(1.04); }
 }
 
-/* Topun alt yazısı */
+/* Topun alt yazısı (topa yakın) */
 .readout{
   width:100%;
   display:flex;
@@ -193,3 +196,4 @@ body{
   opacity: .45;
   cursor: not-allowed;
 }
+``
