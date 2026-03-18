@@ -3,7 +3,7 @@
   --bg2:#0b1a25;
 
   --scale: 0.84;
-  --hue: 0deg;              /* inhale: 0deg (mavi), exhale: -60deg (yeşile kayar) */
+  --hue: 0deg;
   --sat: 1.08;
   --con: 1.03;
 
@@ -24,7 +24,7 @@ body{
   overflow:hidden;
 }
 
-/* Sol üst sade etiket */
+/* Sol üst sade etiket (✅ büyütüldü) */
 .cornerLabel{
   position: fixed;
   top: 14px;
@@ -32,17 +32,16 @@ body{
   z-index: 30;
   padding: 10px 12px;
   border-radius: 14px;
-  font-weight: 750;
-  font-size: 13px;
+  font-weight: 850;
+  font-size: clamp(14px, 2.6vw, 18px);
   letter-spacing: .2px;
-  color: rgba(234,246,255,.92);
+  color: rgba(234,246,255,.95);
   background: rgba(0,0,0,.18);
   border: 1px solid rgba(255,255,255,.10);
   box-shadow: 0 10px 24px rgba(0,0,0,.20);
   pointer-events:none;
 }
 
-/* Ana sahne */
 .stage{
   position: relative;
   width: 100vw;
@@ -67,7 +66,6 @@ body{
   transform: scale(var(--scale));
   will-change: transform, filter;
 
-  /* Tek mavi gradient (inhale baz) */
   background:
     radial-gradient(circle at 30% 25%, rgba(255,255,255,.92), rgba(255,255,255,.15) 26%, transparent 40%),
     radial-gradient(circle at 55% 65%, rgba(180,245,255,.55), rgba(127,208,255,.22) 40%, transparent 65%),
@@ -79,13 +77,12 @@ body{
     inset 0 10px 40px rgba(255,255,255,.20),
     inset 0 -18px 44px rgba(0,30,70,.35);
 
-  /* ✅ Renk geçişi: hue-rotate ile (koyulaşma yok) */
   filter: hue-rotate(var(--hue)) saturate(var(--sat)) contrast(var(--con));
 
-  /* ✅ Yumuşak geçiş: renk daha uzun */
   transition:
     filter 2200ms ease,
     transform 50ms linear;
+
   position: relative;
   overflow: hidden;
 }
@@ -121,7 +118,6 @@ body{
   50%{ transform: translate(1.2%, 1%) rotate(6deg) scale(1.04); }
 }
 
-/* Topun alt yazısı (mobilde büyük kalsın) */
 .readout{
   width:100%;
   display:flex;
@@ -136,31 +132,32 @@ body{
   text-shadow: 0 12px 26px rgba(0,0,0,.40);
   opacity: 1;
   transition: opacity 600ms ease;
-
-  /* ✅ YouTube mobile için büyük */
-  font-size: clamp(26px, 4.3vw, 60px);
+  font-size: clamp(28px, 4.6vw, 64px);
 }
 
-/* Sağ alt HUD */
+/* ✅ HUD artık dikey + küçük */
 .hud{
   position: fixed;
-  right: 14px;
-  bottom: max(14px, env(safe-area-inset-bottom));
+  right: 12px;
+  bottom: max(12px, env(safe-area-inset-bottom));
   z-index: 40;
   display: flex;
-  gap: 10px;
-  align-items: center;
+  flex-direction: column;  /* ✅ alt alta */
+  gap: 8px;
+  align-items: stretch;
 }
 
 .hudBtn{
   border: 1px solid rgba(255,255,255,.12);
-  border-radius: 14px;
-  padding: 12px 14px;
+  border-radius: 12px;
+  padding: 9px 10px;      /* ✅ küçük */
+  min-width: 110px;       /* ✅ dar */
   color: rgba(234,246,255,.92);
   background: rgba(0,0,0,.20);
-  box-shadow: 0 12px 24px rgba(0,0,0,.25), inset 0 1px 0 rgba(255,255,255,.10);
+  box-shadow: 0 10px 20px rgba(0,0,0,.22), inset 0 1px 0 rgba(255,255,255,.10);
   cursor: pointer;
-  font-weight: 750;
+  font-weight: 800;
+  font-size: 13px;        /* ✅ küçük */
   letter-spacing: .2px;
   backdrop-filter: blur(6px);
 }
