@@ -9,7 +9,7 @@
 
   --text: #eaf6ff;
 
-  --uiInsetX: 36px; /* ✅ sol üst/alt hizayı crop’a göre buradan ayarla */
+  --uiInsetX: 72px; /* ✅ 36px -> 72px (2 kat) */
 }
 
 *{ box-sizing:border-box; }
@@ -26,7 +26,6 @@ body{
   overflow:hidden;
 }
 
-/* Sol üst sade etiket */
 .cornerLabel{
   position: fixed;
   top: 14px;
@@ -44,7 +43,6 @@ body{
   pointer-events:none;
 }
 
-/* Sol alt geri sayım (corner ile aynı punto ve hizadan başlar) */
 .countdown{
   position: fixed;
   left: var(--uiInsetX);
@@ -62,7 +60,6 @@ body{
   pointer-events:none;
 }
 
-/* Ana sahne */
 .stage{
   position: relative;
   width: 100vw;
@@ -98,10 +95,7 @@ body{
     inset 0 10px 40px rgba(255,255,255,.20),
     inset 0 -18px 44px rgba(0,30,70,.35);
 
-  /* ✅ koyulaşma yok: hue-rotate ile mavi→yeşil */
   filter: hue-rotate(var(--hue)) saturate(var(--sat)) contrast(var(--con));
-
-  /* ✅ yumuşak ve uzun renk geçişi */
   transition:
     filter 2400ms ease,
     transform 50ms linear;
@@ -141,14 +135,13 @@ body{
   50%{ transform: translate(1.2%, 1%) rotate(6deg) scale(1.04); }
 }
 
-/* Topun alt yazısı (✅ topa daha yakın) */
 .readout{
   width:100%;
   display:flex;
   justify-content:center;
   margin-top: 8px;
   min-height: 64px;
-  transform: translateY(-26px); /* ✅ topa yaklaştırır */
+  transform: translateY(-26px);
 }
 
 .phaseLabel{
@@ -157,12 +150,9 @@ body{
   text-shadow: 0 12px 26px rgba(0,0,0,.40);
   opacity: 1;
   transition: opacity 600ms ease;
-
-  /* Mobilde büyük kalsın */
   font-size: clamp(28px, 4.6vw, 64px);
 }
 
-/* Sağ alt HUD (✅ dikey + küçük) */
 .hud{
   position: fixed;
   right: 12px;
