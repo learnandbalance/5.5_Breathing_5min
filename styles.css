@@ -8,6 +8,8 @@
   --con: 1.03;
 
   --text: #eaf6ff;
+
+  --uiInsetX: 36px; /* ✅ sol üst/alt hizayı crop’a göre buradan ayarla */
 }
 
 *{ box-sizing:border-box; }
@@ -24,16 +26,16 @@ body{
   overflow:hidden;
 }
 
-/* Sol üst sade etiket (✅ büyütüldü) */
+/* Sol üst sade etiket */
 .cornerLabel{
   position: fixed;
   top: 14px;
-  left: 14px;
+  left: var(--uiInsetX);
   z-index: 30;
   padding: 10px 12px;
   border-radius: 14px;
-  font-weight: 850;
-  font-size: clamp(14px, 2.6vw, 18px);
+  font-weight: 900;
+  font-size: clamp(16px, 3.0vw, 22px);
   letter-spacing: .2px;
   color: rgba(234,246,255,.95);
   background: rgba(0,0,0,.18);
@@ -42,6 +44,25 @@ body{
   pointer-events:none;
 }
 
+/* Sol alt geri sayım (corner ile aynı punto ve hizadan başlar) */
+.countdown{
+  position: fixed;
+  left: var(--uiInsetX);
+  bottom: max(14px, env(safe-area-inset-bottom));
+  z-index: 30;
+  padding: 10px 12px;
+  border-radius: 14px;
+  font-weight: 900;
+  font-size: clamp(16px, 3.0vw, 22px);
+  letter-spacing: .2px;
+  color: rgba(234,246,255,.95);
+  background: rgba(0,0,0,.18);
+  border: 1px solid rgba(255,255,255,.10);
+  box-shadow: 0 10px 24px rgba(0,0,0,.20);
+  pointer-events:none;
+}
+
+/* Ana sahne */
 .stage{
   position: relative;
   width: 100vw;
@@ -77,10 +98,12 @@ body{
     inset 0 10px 40px rgba(255,255,255,.20),
     inset 0 -18px 44px rgba(0,30,70,.35);
 
+  /* ✅ koyulaşma yok: hue-rotate ile mavi→yeşil */
   filter: hue-rotate(var(--hue)) saturate(var(--sat)) contrast(var(--con));
 
+  /* ✅ yumuşak ve uzun renk geçişi */
   transition:
-    filter 2200ms ease,
+    filter 2400ms ease,
     transform 50ms linear;
 
   position: relative;
@@ -118,31 +141,35 @@ body{
   50%{ transform: translate(1.2%, 1%) rotate(6deg) scale(1.04); }
 }
 
+/* Topun alt yazısı (✅ topa daha yakın) */
 .readout{
   width:100%;
   display:flex;
   justify-content:center;
-  margin-top: 18px;
+  margin-top: 8px;
   min-height: 64px;
+  transform: translateY(-26px); /* ✅ topa yaklaştırır */
 }
 
 .phaseLabel{
-  font-weight: 900;
+  font-weight: 950;
   letter-spacing: .3px;
   text-shadow: 0 12px 26px rgba(0,0,0,.40);
   opacity: 1;
   transition: opacity 600ms ease;
+
+  /* Mobilde büyük kalsın */
   font-size: clamp(28px, 4.6vw, 64px);
 }
 
-/* ✅ HUD artık dikey + küçük */
+/* Sağ alt HUD (✅ dikey + küçük) */
 .hud{
   position: fixed;
   right: 12px;
   bottom: max(12px, env(safe-area-inset-bottom));
   z-index: 40;
   display: flex;
-  flex-direction: column;  /* ✅ alt alta */
+  flex-direction: column;
   gap: 8px;
   align-items: stretch;
 }
@@ -150,14 +177,14 @@ body{
 .hudBtn{
   border: 1px solid rgba(255,255,255,.12);
   border-radius: 12px;
-  padding: 9px 10px;      /* ✅ küçük */
-  min-width: 110px;       /* ✅ dar */
+  padding: 9px 10px;
+  min-width: 110px;
   color: rgba(234,246,255,.92);
   background: rgba(0,0,0,.20);
   box-shadow: 0 10px 20px rgba(0,0,0,.22), inset 0 1px 0 rgba(255,255,255,.10);
   cursor: pointer;
-  font-weight: 800;
-  font-size: 13px;        /* ✅ küçük */
+  font-weight: 900;
+  font-size: 13px;
   letter-spacing: .2px;
   backdrop-filter: blur(6px);
 }
