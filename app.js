@@ -1,5 +1,5 @@
 const PHASE_LEN = 5.5;
-const CYCLE_LEN = PHASE_LEN * 2;
+const CYCLE_LEN = PHASE_LEN * 2; // 11s
 
 const PRE_ROLL = 3.0;
 const MIN_SCALE = 0.78;
@@ -7,6 +7,11 @@ const MAX_SCALE = 1.08;
 
 let durationMin = 5;
 let durationSec = 5 * 60;
+
+// ✅ planned = geri sayım süresi (tam 5:00)
+// ✅ extended = exhale sonuna denk getirmek için uzatılmış süre
+let plannedSec = durationSec;
+let extendedSec = durationSec;
 
 let running = false;
 let rafId = null;
@@ -40,9 +45,15 @@ function getMinFromURL(){
   return 5;
 }
 
+function computeExtendedSeconds(planned){
+  // Exhale bitişi = cycle boundary (11, 22, 33, ...)
+  return Math.ceil(planned / CYCLE_LEN) * CYCLE_LEN;
+}
+
 function setOrbScale(scale){
   document.documentElement.style.setProperty("--scale", scale.toFixed(4));
 }
+
 function setHueForPhase(phase){
   const hue = (phase === "inhale") ? "0deg" : "-60deg";
   document.documentElement.style.setProperty("--hue", hue);
@@ -62,12 +73,13 @@ function computeBreath(elapsed){
   return { phase, phaseProgress };
 }
 
-/* ---------- AUDIO ---------- */
+/* ---------------- AUDIO ---------------- */
 function ensureAudio(){
   if (!audioCtx){
     audioCtx = new (window.AudioContext || window.webkitAudioContext)();
   }
   if (audioCtx.state === "suspended") audioCtx.resume();
+
   if (!audioReady){
     buildAudioGraph();
     audioReady = true;
@@ -198,7 +210,7 @@ function stopAudioSoft(){
   master.gain.setTargetAtTime(0.0001, now, 0.09);
 }
 
-/* ---------- APP ---------- */
+/* ---------------- UI + LOOP ---------------- */
 window.addEventListener("DOMContentLoaded", () => {
   const phaseLabel = document.getElementById("phaseLabel");
   const cornerLabel = document.getElementById("cornerLabel");
@@ -209,16 +221,15 @@ window.addEventListener("DOMContentLoaded", () => {
   const resetBtn = document.getElementById("resetBtn");
   const soundBtn = document.getElementById("soundBtn");
 
-  // ✅ JS yüklenme kanıtı: buton yazısı kısa süre değişsin
-  const old = startBtn.textContent;
-  startBtn.textContent = "Start ✓";
-  setTimeout(() => startBtn.textContent = old, 900);
-
+  // Setup durations
   durationMin = getMinFromURL();
   durationSec = durationMin * 60;
 
+  plannedSec = durationSec;                 // countdown target
+  extendedSec = computeExtendedSeconds(plannedSec); // end at exhale boundary
+
   cornerLabel.textContent = `${durationMin} MIN • 5.5 Breathing`;
-  if (countdown) countdown.textContent = fmtMMSS(durationSec);
+  if (countdown) countdown.textContent = fmtMMSS(plannedSec);
 
   function setPhaseLabel(text, visible=true){
     phaseLabel.textContent = text;
@@ -227,6 +238,7 @@ window.addEventListener("DOMContentLoaded", () => {
 
   function start(){
     if (running) return;
+
     try { ensureAudio(); } catch(e) {}
     running = true;
     lastPhase = "idle";
@@ -241,6 +253,7 @@ window.addEventListener("DOMContentLoaded", () => {
 
   function pause(){
     if (!running) return;
+
     running = false;
     cancelAnimationFrame(rafId);
 
@@ -256,6 +269,7 @@ window.addEventListener("DOMContentLoaded", () => {
 
   function resume(){
     if (running) return;
+
     try { ensureAudio(); } catch(e) {}
 
     running = true;
@@ -285,7 +299,8 @@ window.addEventListener("DOMContentLoaded", () => {
     setOrbScale(0.84);
     setPhaseLabel("Ready", true);
 
-    if (countdown) countdown.textContent = fmtMMSS(durationSec);
+    // ✅ reset sonrası countdown tekrar başa (5:00)
+    if (countdown) countdown.textContent = fmtMMSS(plannedSec);
   }
 
   function endSession(){
@@ -301,6 +316,7 @@ window.addEventListener("DOMContentLoaded", () => {
     startBtn.disabled = false;
     pauseBtn.disabled = true;
 
+    // ✅ countdown sıfırda kalır
     if (countdown) countdown.textContent = "00:00";
   }
 
@@ -310,21 +326,24 @@ window.addEventListener("DOMContentLoaded", () => {
     const now = performance.now();
     const elapsedTotal = pausedElapsed + (now - t0) / 1000;
 
+    // Pre-roll: sakin, countdown tam süre
     if (elapsedTotal < PRE_ROLL){
       setOrbScale(0.84);
       setHueForPhase("inhale");
       setPhaseLabel("", false);
-      if (countdown) countdown.textContent = fmtMMSS(durationSec);
+      if (countdown) countdown.textContent = fmtMMSS(plannedSec);
       rafId = requestAnimationFrame(loop);
       return;
     }
 
     const breathElapsed = elapsedTotal - PRE_ROLL;
 
-    const remaining = durationSec - Math.max(0, breathElapsed);
-    if (countdown) countdown.textContent = fmtMMSS(remaining);
+    // ✅ Countdown: plannedSec’den 0’a iner, sonra 0’da bekler
+    const remainingForCountdown = plannedSec - breathElapsed;
+    if (countdown) countdown.textContent = fmtMMSS(remainingForCountdown);
 
-    if (breathElapsed >= durationSec){
+    // ✅ Bitirme: exhale sonu (cycle boundary) için extendedSec kullan
+    if (breathElapsed >= extendedSec){
       endSession();
       return;
     }
@@ -365,10 +384,11 @@ window.addEventListener("DOMContentLoaded", () => {
     else if (audioReady && running && lastPhase !== "idle") { try { setPhaseAudio(lastPhase); } catch(e){} }
   });
 
-  // initial state
+  // Initial
   setHueForPhase("inhale");
   setOrbScale(0.84);
   setPhaseLabel("Ready", true);
+
   resetBtn.disabled = true;
   pauseBtn.disabled = true;
 });
