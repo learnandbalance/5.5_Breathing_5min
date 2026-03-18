@@ -26,6 +26,13 @@ let lastPhase = "idle";
 function clamp(v, a, b){ return Math.max(a, Math.min(b, v)); }
 function easeInOut(t){ return t * t * (3 - 2 * t); }
 
+function fmtMMSS(totalSec){
+  totalSec = Math.max(0, Math.floor(totalSec));
+  const m = Math.floor(totalSec / 60);
+  const s = totalSec % 60;
+  return `${String(m).padStart(2,"0")}:${String(s).padStart(2,"0")}`;
+}
+
 function getMinFromURL(){
   const p = new URLSearchParams(location.search);
   const min = Number(p.get("min") || "5");
@@ -38,6 +45,7 @@ function setOrbScale(scale){
 }
 
 function setHueForPhase(phase){
+  // inhale blue = 0deg, exhale green shift
   const hue = (phase === "inhale") ? "0deg" : "-60deg";
   document.documentElement.style.setProperty("--hue", hue);
 }
@@ -76,6 +84,7 @@ function buildAudioGraph(){
   master.gain.setValueAtTime(0.0001, now);
   master.connect(audioCtx.destination);
 
+  // subtle room
   const delay = audioCtx.createDelay(0.35);
   delay.delayTime.value = 0.18;
 
@@ -193,10 +202,12 @@ function stopAudioSoft(){
   master.gain.setTargetAtTime(0.0001, now, 0.09);
 }
 
-/* ---------------- APP ---------------- */
+/* ---------------- UI + LOOP ---------------- */
 window.addEventListener("DOMContentLoaded", () => {
   const phaseLabel = document.getElementById("phaseLabel");
   const cornerLabel = document.getElementById("cornerLabel");
+  const countdown = document.getElementById("countdown");
+
   const startBtn = document.getElementById("startBtn");
   const pauseBtn = document.getElementById("pauseBtn");
   const resetBtn = document.getElementById("resetBtn");
@@ -204,7 +215,9 @@ window.addEventListener("DOMContentLoaded", () => {
 
   durationMin = getMinFromURL();
   durationSec = durationMin * 60;
+
   cornerLabel.textContent = `${durationMin} MIN • 5.5 Breathing`;
+  if (countdown) countdown.textContent = fmtMMSS(durationSec);
 
   function setPhaseLabel(text, visible=true){
     phaseLabel.textContent = text;
@@ -214,8 +227,8 @@ window.addEventListener("DOMContentLoaded", () => {
   function start(){
     if (running) return;
 
-    // ✅ Audio fail olsa bile animasyon başlamalı
-    try { ensureAudio(); } catch(e) { /* ignore */ }
+    // Audio fail olsa bile animasyon başlasın
+    try { ensureAudio(); } catch(e) {}
 
     running = true;
     lastPhase = "idle";
@@ -234,125 +247,3 @@ window.addEventListener("DOMContentLoaded", () => {
     running = false;
     cancelAnimationFrame(rafId);
 
-    const now = performance.now();
-    pausedElapsed += (now - t0) / 1000;
-
-    try { stopAudioSoft(); } catch(e){}
-
-    startBtn.textContent = "Resume";
-    startBtn.disabled = false;
-    pauseBtn.disabled = true;
-  }
-
-  function resume(){
-    if (running) return;
-
-    try { ensureAudio(); } catch(e) { /* ignore */ }
-    running = true;
-
-    startBtn.disabled = true;
-    pauseBtn.disabled = false;
-
-    t0 = performance.now();
-    lastPhase = "idle";
-    rafId = requestAnimationFrame(loop);
-  }
-
-  function reset(){
-    running = false;
-    cancelAnimationFrame(rafId);
-
-    pausedElapsed = 0;
-    lastPhase = "idle";
-
-    try { stopAudioSoft(); } catch(e){}
-
-    startBtn.textContent = "Start";
-    startBtn.disabled = false;
-    pauseBtn.disabled = true;
-    resetBtn.disabled = true;
-
-    setHueForPhase("inhale");
-    setOrbScale(0.84);
-    setPhaseLabel("Ready", true);
-  }
-
-  function endSession(){
-    running = false;
-    cancelAnimationFrame(rafId);
-
-    try { stopAudioSoft(); } catch(e){}
-
-    setOrbScale(0.84);
-    setPhaseLabel("", false);
-
-    startBtn.textContent = "Start";
-    startBtn.disabled = false;
-    pauseBtn.disabled = true;
-  }
-
-  function loop(){
-    if (!running) return;
-
-    const now = performance.now();
-    const elapsedTotal = pausedElapsed + (now - t0) / 1000;
-
-    if (elapsedTotal < PRE_ROLL){
-      setOrbScale(0.84);
-      setHueForPhase("inhale");
-      setPhaseLabel("", false);
-      rafId = requestAnimationFrame(loop);
-      return;
-    }
-
-    const breathElapsed = elapsedTotal - PRE_ROLL;
-
-    if (breathElapsed >= durationSec){
-      endSession();
-      return;
-    }
-
-    const { phase, phaseProgress } = computeBreath(breathElapsed);
-
-    if (phase !== lastPhase){
-      setHueForPhase(phase);
-      setPhaseLabel(phase === "inhale" ? "Inhale" : "Exhale", true);
-
-      try { setPhaseAudio(phase); } catch(e){}
-
-      lastPhase = phase;
-    }
-
-    const t = easeInOut(clamp(phaseProgress, 0, 1));
-    const s = (phase === "inhale")
-      ? (MIN_SCALE + (MAX_SCALE - MIN_SCALE) * t)
-      : (MAX_SCALE - (MAX_SCALE - MIN_SCALE) * t);
-
-    setOrbScale(s);
-    rafId = requestAnimationFrame(loop);
-  }
-
-  // Buttons
-  startBtn.addEventListener("click", () => {
-    if (!running && startBtn.textContent === "Resume") resume();
-    else start();
-  });
-
-  pauseBtn.addEventListener("click", pause);
-  resetBtn.addEventListener("click", reset);
-
-  soundBtn.addEventListener("click", () => {
-    soundOn = !soundOn;
-    soundBtn.textContent = soundOn ? "Sound: On" : "Sound: Off";
-    soundBtn.setAttribute("aria-pressed", soundOn ? "true" : "false");
-    if (!soundOn) { try { stopAudioSoft(); } catch(e){} }
-    else if (audioReady && running && lastPhase !== "idle") { try { setPhaseAudio(lastPhase); } catch(e){} }
-  });
-
-  // initial
-  setHueForPhase("inhale");
-  setOrbScale(0.84);
-  setPhaseLabel("Ready", true);
-  resetBtn.disabled = true;
-  pauseBtn.disabled = true;
-});
