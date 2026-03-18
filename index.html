@@ -5,24 +5,29 @@
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
   <title>5.5 Breathing</title>
 
-  <link rel="stylesheet" href="styles.css?v=11">
-  <script defer src="app.js?v=11"></script>
+  <link rel="stylesheet" href="styles.css?v=12" />
+  <script defer src="app.js?v=12"></script>
 </head>
 
 <body>
+  <!-- Sol üst etiket -->
   <div class="cornerLabel" id="cornerLabel">5 MIN • 5.5 Breathing</div>
+
+  <!-- Sol alt geri sayım -->
+  <div class="countdown" id="countdown">05:00</div>
 
   <main class="stage" aria-label="Breathing visual">
     <div class="orb-wrap" aria-hidden="true">
       <div id="orb" class="orb" aria-label="breathing orb"></div>
     </div>
 
+    <!-- Topun altında (topa daha yakın) büyük yazı -->
     <div class="readout" aria-live="polite">
       <div id="phaseLabel" class="phaseLabel">Ready</div>
     </div>
   </main>
 
-  <!-- Sağ alt HUD (dikine) -->
+  <!-- Sağ alt HUD kontrol butonları (dikey) -->
   <div class="hud" aria-label="Controls">
     <button class="hudBtn primary" id="startBtn">Start</button>
     <button class="hudBtn" id="pauseBtn" disabled>Pause</button>
