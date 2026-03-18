@@ -4,11 +4,12 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
   <title>5.5 Breathing</title>
-  <link rel="stylesheet" href="styles.css?v=10">
+
+  <link rel="stylesheet" href="styles.css?v=11">
+  <script defer src="app.js?v=11"></script>
 </head>
 
 <body>
-  <!-- Sol üst küçük etiket (tek satır, sade) -->
   <div class="cornerLabel" id="cornerLabel">5 MIN • 5.5 Breathing</div>
 
   <main class="stage" aria-label="Breathing visual">
@@ -16,20 +17,17 @@
       <div id="orb" class="orb" aria-label="breathing orb"></div>
     </div>
 
-    <!-- Topun altında büyük yazı -->
     <div class="readout" aria-live="polite">
       <div id="phaseLabel" class="phaseLabel">Ready</div>
     </div>
   </main>
 
-  <!-- Sağ alt HUD kontrol butonları -->
+  <!-- Sağ alt HUD (dikine) -->
   <div class="hud" aria-label="Controls">
     <button class="hudBtn primary" id="startBtn">Start</button>
     <button class="hudBtn" id="pauseBtn" disabled>Pause</button>
     <button class="hudBtn" id="resetBtn" disabled>Reset</button>
     <button class="hudBtn" id="soundBtn" aria-pressed="true">Sound: On</button>
   </div>
-
-  <script src="app.js?v=10"></script>
 </body>
 </html>
