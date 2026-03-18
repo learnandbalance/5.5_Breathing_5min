@@ -8,10 +8,7 @@ const MAX_SCALE = 1.08;
 let durationMin = 5;
 let durationSec = 5 * 60;
 
-// ✅ planned = geri sayım süresi (tam 5:00)
-// ✅ extended = exhale sonuna denk getirmek için uzatılmış süre
 let plannedSec = durationSec;
-let extendedSec = durationSec;
 
 let running = false;
 let rafId = null;
@@ -28,6 +25,10 @@ let t0 = 0;
 let pausedElapsed = 0;
 let lastPhase = "idle";
 
+// ✅ new: end alignment state
+let endingMode = false;
+let prevCycleIndex = 0;
+
 function clamp(v, a, b){ return Math.max(a, Math.min(b, v)); }
 function easeInOut(t){ return t * t * (3 - 2 * t); }
 
@@ -43,11 +44,6 @@ function getMinFromURL(){
   const min = Number(p.get("min") || "5");
   if (Number.isFinite(min) && min > 0) return Math.round(min);
   return 5;
-}
-
-function computeExtendedSeconds(planned){
-  // Exhale bitişi = cycle boundary (11, 22, 33, ...)
-  return Math.ceil(planned / CYCLE_LEN) * CYCLE_LEN;
 }
 
 function setOrbScale(scale){
@@ -221,12 +217,9 @@ window.addEventListener("DOMContentLoaded", () => {
   const resetBtn = document.getElementById("resetBtn");
   const soundBtn = document.getElementById("soundBtn");
 
-  // Setup durations
   durationMin = getMinFromURL();
   durationSec = durationMin * 60;
-
-  plannedSec = durationSec;                 // countdown target
-  extendedSec = computeExtendedSeconds(plannedSec); // end at exhale boundary
+  plannedSec = durationSec;
 
   cornerLabel.textContent = `${durationMin} MIN • 5.5 Breathing`;
   if (countdown) countdown.textContent = fmtMMSS(plannedSec);
@@ -238,10 +231,12 @@ window.addEventListener("DOMContentLoaded", () => {
 
   function start(){
     if (running) return;
-
     try { ensureAudio(); } catch(e) {}
+
     running = true;
     lastPhase = "idle";
+    endingMode = false;
+    prevCycleIndex = 0;
 
     startBtn.disabled = true;
     pauseBtn.disabled = false;
@@ -269,7 +264,6 @@ window.addEventListener("DOMContentLoaded", () => {
 
   function resume(){
     if (running) return;
-
     try { ensureAudio(); } catch(e) {}
 
     running = true;
@@ -287,6 +281,8 @@ window.addEventListener("DOMContentLoaded", () => {
 
     pausedElapsed = 0;
     lastPhase = "idle";
+    endingMode = false;
+    prevCycleIndex = 0;
 
     try { stopAudioSoft(); } catch(e){}
 
@@ -299,7 +295,6 @@ window.addEventListener("DOMContentLoaded", () => {
     setOrbScale(0.84);
     setPhaseLabel("Ready", true);
 
-    // ✅ reset sonrası countdown tekrar başa (5:00)
     if (countdown) countdown.textContent = fmtMMSS(plannedSec);
   }
 
@@ -309,14 +304,15 @@ window.addEventListener("DOMContentLoaded", () => {
 
     try { stopAudioSoft(); } catch(e){}
 
-    setOrbScale(0.84);
+    // End state: exhale finished -> small orb + green
+    setHueForPhase("exhale");
+    setOrbScale(MIN_SCALE);
     setPhaseLabel("", false);
 
     startBtn.textContent = "Start";
     startBtn.disabled = false;
     pauseBtn.disabled = true;
 
-    // ✅ countdown sıfırda kalır
     if (countdown) countdown.textContent = "00:00";
   }
 
@@ -326,7 +322,7 @@ window.addEventListener("DOMContentLoaded", () => {
     const now = performance.now();
     const elapsedTotal = pausedElapsed + (now - t0) / 1000;
 
-    // Pre-roll: sakin, countdown tam süre
+    // Pre-roll: calm
     if (elapsedTotal < PRE_ROLL){
       setOrbScale(0.84);
       setHueForPhase("inhale");
@@ -338,15 +334,25 @@ window.addEventListener("DOMContentLoaded", () => {
 
     const breathElapsed = elapsedTotal - PRE_ROLL;
 
-    // ✅ Countdown: plannedSec’den 0’a iner, sonra 0’da bekler
+    // Countdown always based on plannedSec; clamps at 00:00
     const remainingForCountdown = plannedSec - breathElapsed;
     if (countdown) countdown.textContent = fmtMMSS(remainingForCountdown);
 
-    // ✅ Bitirme: exhale sonu (cycle boundary) için extendedSec kullan
-    if (breathElapsed >= extendedSec){
+    // Once planned is over, enable ending mode
+    if (!endingMode && breathElapsed >= plannedSec){
+      endingMode = true;
+      // Initialize cycle index tracking at this moment
+      prevCycleIndex = Math.floor(breathElapsed / CYCLE_LEN);
+    }
+
+    // Detect cycle boundary crossing AFTER planned ended
+    const cycleIndex = Math.floor(breathElapsed / CYCLE_LEN);
+    if (endingMode && cycleIndex > prevCycleIndex){
+      // We crossed an exhale-end boundary -> stop cleanly here
       endSession();
       return;
     }
+    prevCycleIndex = cycleIndex;
 
     const { phase, phaseProgress } = computeBreath(breathElapsed);
 
@@ -366,7 +372,6 @@ window.addEventListener("DOMContentLoaded", () => {
     rafId = requestAnimationFrame(loop);
   }
 
-  // Events
   startBtn.addEventListener("click", () => {
     if (!running && startBtn.textContent === "Resume") resume();
     else start();
@@ -388,7 +393,6 @@ window.addEventListener("DOMContentLoaded", () => {
   setHueForPhase("inhale");
   setOrbScale(0.84);
   setPhaseLabel("Ready", true);
-
   resetBtn.disabled = true;
   pauseBtn.disabled = true;
 });
