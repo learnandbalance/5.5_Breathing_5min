@@ -4,46 +4,32 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
   <title>5.5 Breathing</title>
-  <link rel="stylesheet" href="styles.css?v=3">
+  <link rel="stylesheet" href="styles.css?v=10">
 </head>
 
 <body>
-  <main class="app" id="appRoot">
+  <!-- Sol üst küçük etiket (tek satır, sade) -->
+  <div class="cornerLabel" id="cornerLabel">5 MIN • 5.5 Breathing</div>
 
-    <header class="top" id="topBar">
-      <div class="brand">
-        <div class="dot"></div>
-        <h1>5.5 Breathing</h1>
-      </div>
+  <main class="stage" aria-label="Breathing visual">
+    <div class="orb-wrap" aria-hidden="true">
+      <div id="orb" class="orb" aria-label="breathing orb"></div>
+    </div>
 
-      <div class="toggles" id="togglesBar">
-        <label class="switch" title="Sound on/off">
-          <input id="soundToggle" type="checkbox" checked />
-          <span class="slider"></span>
-          <span class="switch-label">Sound</span>
-        </label>
-      </div>
-    </header>
-
-    <!-- Köşe etiketi -->
-    <div class="cornerLabel" id="cornerLabel">5 MIN • 5.5 Breathing</div>
-
-    <section class="stage" aria-label="Breathing visual">
-      <div class="orb-wrap" aria-hidden="true">
-        <div id="orb" class="orb">
-          <div class="orbLayer blue"></div>
-          <div class="orbLayer green"></div>
-        </div>
-      </div>
-
-      <!-- Topun altında Inhale/Exhale -->
-      <div class="readout" aria-live="polite">
-        <div id="phaseLabel" class="phaseLabel">Inhale</div>
-      </div>
-    </section>
-
+    <!-- Topun altında büyük yazı -->
+    <div class="readout" aria-live="polite">
+      <div id="phaseLabel" class="phaseLabel">Ready</div>
+    </div>
   </main>
 
-  <script src="app.js?v=3"></script>
+  <!-- Sağ alt HUD kontrol butonları -->
+  <div class="hud" aria-label="Controls">
+    <button class="hudBtn primary" id="startBtn">Start</button>
+    <button class="hudBtn" id="pauseBtn" disabled>Pause</button>
+    <button class="hudBtn" id="resetBtn" disabled>Reset</button>
+    <button class="hudBtn" id="soundBtn" aria-pressed="true">Sound: On</button>
+  </div>
+
+  <script src="app.js?v=10"></script>
 </body>
 </html>
