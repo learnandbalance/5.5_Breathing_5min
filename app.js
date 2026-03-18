@@ -1,15 +1,7 @@
 const PHASE_LEN = 5.5;
 const CYCLE_LEN = PHASE_LEN * 2;
 
-const phaseLabel = document.getElementById("phaseLabel");
-const cornerLabel = document.getElementById("cornerLabel");
-
-const startBtn = document.getElementById("startBtn");
-const pauseBtn = document.getElementById("pauseBtn");
-const resetBtn = document.getElementById("resetBtn");
-const soundBtn = document.getElementById("soundBtn");
-
-const PRE_ROLL = 3.0;     // breathing starts after 3 seconds
+const PRE_ROLL = 3.0;
 const MIN_SCALE = 0.78;
 const MAX_SCALE = 1.08;
 
@@ -30,7 +22,6 @@ let exhaleBus = null;
 let t0 = 0;
 let pausedElapsed = 0;
 let lastPhase = "idle";
-let ended = false;
 
 function clamp(v, a, b){ return Math.max(a, Math.min(b, v)); }
 function easeInOut(t){ return t * t * (3 - 2 * t); }
@@ -47,18 +38,25 @@ function setOrbScale(scale){
 }
 
 function setHueForPhase(phase){
-  // inhale blue = 0deg
-  // exhale green = about -60deg (blue -> green shift)
   const hue = (phase === "inhale") ? "0deg" : "-60deg";
   document.documentElement.style.setProperty("--hue", hue);
 }
 
-function setPhaseLabel(text, visible=true){
-  phaseLabel.textContent = text;
-  phaseLabel.style.opacity = visible ? "1" : "0";
+function computeBreath(elapsed){
+  const inCycle = elapsed % CYCLE_LEN;
+  let phase, phaseProgress;
+
+  if (inCycle < PHASE_LEN){
+    phase = "inhale";
+    phaseProgress = inCycle / PHASE_LEN;
+  } else {
+    phase = "exhale";
+    phaseProgress = (inCycle - PHASE_LEN) / PHASE_LEN;
+  }
+  return { phase, phaseProgress };
 }
 
-/* ---------------- AUDIO (pad) ---------------- */
+/* ---------------- AUDIO ---------------- */
 function ensureAudio(){
   if (!audioCtx){
     audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -78,7 +76,6 @@ function buildAudioGraph(){
   master.gain.setValueAtTime(0.0001, now);
   master.connect(audioCtx.destination);
 
-  // subtle room
   const delay = audioCtx.createDelay(0.35);
   delay.delayTime.value = 0.18;
 
@@ -133,8 +130,6 @@ function createChordBus({ freqs, warmth }){
   const mix = audioCtx.createGain();
   mix.gain.value = 1.0;
 
-  const oscs = [];
-
   freqs.forEach((f, i) => {
     const s = audioCtx.createOscillator();
     s.type = "sine";
@@ -153,19 +148,16 @@ function createChordBus({ freqs, warmth }){
     gS.gain.value = 0.33 + (i === 1 ? 0.05 : 0.0);
     gW.gain.value = 0.05;
 
-    s.connect(gS);
-    w.connect(gW);
-    gS.connect(mix);
-    gW.connect(mix);
+    s.connect(gS); w.connect(gW);
+    gS.connect(mix); gW.connect(mix);
 
-    oscs.push(s, w);
+    s.start(now); w.start(now);
   });
+
+  lfo.start(now);
 
   mix.connect(lp);
   lp.connect(gain);
-
-  oscs.forEach(o => o.start(now));
-  lfo.start(now);
 
   return { out: gain, gain };
 }
@@ -189,3 +181,178 @@ function setPhaseAudio(phase){
     exhaleBus.gain.gain.setTargetAtTime(0.0001, now, FADE);
   } else {
     inhaleBus.gain.gain.setTargetAtTime(0.0001, now, FADE);
+    exhaleBus.gain.gain.setTargetAtTime(0.22, now, FADE);
+  }
+}
+
+function stopAudioSoft(){
+  if (!audioReady) return;
+  const now = audioCtx.currentTime;
+  inhaleBus.gain.gain.setTargetAtTime(0.0001, now, 0.07);
+  exhaleBus.gain.gain.setTargetAtTime(0.0001, now, 0.07);
+  master.gain.setTargetAtTime(0.0001, now, 0.09);
+}
+
+/* ---------------- APP ---------------- */
+window.addEventListener("DOMContentLoaded", () => {
+  const phaseLabel = document.getElementById("phaseLabel");
+  const cornerLabel = document.getElementById("cornerLabel");
+  const startBtn = document.getElementById("startBtn");
+  const pauseBtn = document.getElementById("pauseBtn");
+  const resetBtn = document.getElementById("resetBtn");
+  const soundBtn = document.getElementById("soundBtn");
+
+  durationMin = getMinFromURL();
+  durationSec = durationMin * 60;
+  cornerLabel.textContent = `${durationMin} MIN • 5.5 Breathing`;
+
+  function setPhaseLabel(text, visible=true){
+    phaseLabel.textContent = text;
+    phaseLabel.style.opacity = visible ? "1" : "0";
+  }
+
+  function start(){
+    if (running) return;
+
+    // ✅ Audio fail olsa bile animasyon başlamalı
+    try { ensureAudio(); } catch(e) { /* ignore */ }
+
+    running = true;
+    lastPhase = "idle";
+
+    startBtn.disabled = true;
+    pauseBtn.disabled = false;
+    resetBtn.disabled = false;
+
+    t0 = performance.now();
+    rafId = requestAnimationFrame(loop);
+  }
+
+  function pause(){
+    if (!running) return;
+
+    running = false;
+    cancelAnimationFrame(rafId);
+
+    const now = performance.now();
+    pausedElapsed += (now - t0) / 1000;
+
+    try { stopAudioSoft(); } catch(e){}
+
+    startBtn.textContent = "Resume";
+    startBtn.disabled = false;
+    pauseBtn.disabled = true;
+  }
+
+  function resume(){
+    if (running) return;
+
+    try { ensureAudio(); } catch(e) { /* ignore */ }
+    running = true;
+
+    startBtn.disabled = true;
+    pauseBtn.disabled = false;
+
+    t0 = performance.now();
+    lastPhase = "idle";
+    rafId = requestAnimationFrame(loop);
+  }
+
+  function reset(){
+    running = false;
+    cancelAnimationFrame(rafId);
+
+    pausedElapsed = 0;
+    lastPhase = "idle";
+
+    try { stopAudioSoft(); } catch(e){}
+
+    startBtn.textContent = "Start";
+    startBtn.disabled = false;
+    pauseBtn.disabled = true;
+    resetBtn.disabled = true;
+
+    setHueForPhase("inhale");
+    setOrbScale(0.84);
+    setPhaseLabel("Ready", true);
+  }
+
+  function endSession(){
+    running = false;
+    cancelAnimationFrame(rafId);
+
+    try { stopAudioSoft(); } catch(e){}
+
+    setOrbScale(0.84);
+    setPhaseLabel("", false);
+
+    startBtn.textContent = "Start";
+    startBtn.disabled = false;
+    pauseBtn.disabled = true;
+  }
+
+  function loop(){
+    if (!running) return;
+
+    const now = performance.now();
+    const elapsedTotal = pausedElapsed + (now - t0) / 1000;
+
+    if (elapsedTotal < PRE_ROLL){
+      setOrbScale(0.84);
+      setHueForPhase("inhale");
+      setPhaseLabel("", false);
+      rafId = requestAnimationFrame(loop);
+      return;
+    }
+
+    const breathElapsed = elapsedTotal - PRE_ROLL;
+
+    if (breathElapsed >= durationSec){
+      endSession();
+      return;
+    }
+
+    const { phase, phaseProgress } = computeBreath(breathElapsed);
+
+    if (phase !== lastPhase){
+      setHueForPhase(phase);
+      setPhaseLabel(phase === "inhale" ? "Inhale" : "Exhale", true);
+
+      try { setPhaseAudio(phase); } catch(e){}
+
+      lastPhase = phase;
+    }
+
+    const t = easeInOut(clamp(phaseProgress, 0, 1));
+    const s = (phase === "inhale")
+      ? (MIN_SCALE + (MAX_SCALE - MIN_SCALE) * t)
+      : (MAX_SCALE - (MAX_SCALE - MIN_SCALE) * t);
+
+    setOrbScale(s);
+    rafId = requestAnimationFrame(loop);
+  }
+
+  // Buttons
+  startBtn.addEventListener("click", () => {
+    if (!running && startBtn.textContent === "Resume") resume();
+    else start();
+  });
+
+  pauseBtn.addEventListener("click", pause);
+  resetBtn.addEventListener("click", reset);
+
+  soundBtn.addEventListener("click", () => {
+    soundOn = !soundOn;
+    soundBtn.textContent = soundOn ? "Sound: On" : "Sound: Off";
+    soundBtn.setAttribute("aria-pressed", soundOn ? "true" : "false");
+    if (!soundOn) { try { stopAudioSoft(); } catch(e){} }
+    else if (audioReady && running && lastPhase !== "idle") { try { setPhaseAudio(lastPhase); } catch(e){} }
+  });
+
+  // initial
+  setHueForPhase("inhale");
+  setOrbScale(0.84);
+  setPhaseLabel("Ready", true);
+  resetBtn.disabled = true;
+  pauseBtn.disabled = true;
+});
