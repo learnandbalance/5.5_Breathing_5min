@@ -4,9 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
   <title>5.5 Breathing</title>
-
-  <!-- ✅ CSS mutlaka böyle bağlanmalı -->
-  <link rel="stylesheet" href="styles.css?v=1">
+  <link rel="stylesheet" href="styles.css?v=3">
 </head>
 
 <body>
@@ -27,6 +25,7 @@
       </div>
     </header>
 
+    <!-- Köşe etiketi -->
     <div class="cornerLabel" id="cornerLabel">5 MIN • 5.5 Breathing</div>
 
     <section class="stage" aria-label="Breathing visual">
@@ -37,51 +36,14 @@
         </div>
       </div>
 
-      <div class="intro" id="introOverlay" aria-live="polite">
-        <div class="introCard">
-          <div class="introTitle">5.5 Breathing</div>
-          <div class="introLine">Breathe in through your nose. Breathe out through your nose.</div>
-          <div class="introLine">Inhale as the circle expands. Exhale as it contracts.</div>
-        </div>
-      </div>
-
+      <!-- Topun altında Inhale/Exhale -->
       <div class="readout" aria-live="polite">
         <div id="phaseLabel" class="phaseLabel">Inhale</div>
       </div>
     </section>
 
-    <section class="controls" id="controlsPanel" aria-label="Controls">
-      <div class="presets" role="group" aria-label="Duration presets">
-        <button class="pill preset active" data-min="5">5 min</button>
-        <button class="pill preset" data-min="10">10 min</button>
-        <button class="pill preset" data-min="15">15 min</button>
-        <button class="pill preset" data-min="20">20 min</button>
-        <button class="pill preset" data-min="30">30 min</button>
-        <button class="pill preset" data-min="45">45 min</button>
-        <button class="pill preset" data-min="60">60 min</button>
-
-        <div class="custom">
-          <label for="customMin" class="muted">Custom (min)</label>
-          <input id="customMin" type="number" min="1" max="240" step="1" value="5" />
-        </div>
-      </div>
-
-      <div class="buttons">
-        <button id="startBtn" class="btn primary">Start</button>
-        <button id="pauseBtn" class="btn" disabled>Pause</button>
-        <button id="resetBtn" class="btn" disabled>Reset</button>
-        <button id="backBtn" class="btn" disabled>Back (1 cycle)</button>
-      </div>
-
-      <footer class="hint">
-        Note: On iOS, audio begins after user interaction (Start).
-      </footer>
-    </section>
-
   </main>
 
-  <!-- ✅ JS mutlaka böyle bağlanmalı (body sonunda) -->
-  <script src="app.js?v=1"></script>
+  <script src="app.js?v=3"></script>
 </body>
 </html>
-``
